@@ -32,8 +32,13 @@ destring month, replace
 gen fecha = ym(year, month)
 format fecha %tm
 
+gen fechaq = qofd(dofm(ym(year, month)))
+format fechaq %tq
+
 drop year month periodo
 order id concepto fecha var_ISE
+
+save "clean_data/ise", replace
 
 ** Graficando series de tiempo
 
@@ -119,7 +124,6 @@ import excel "raw_data/PIB.xlsx", sheet("Cuadro 1") cellrange("C48:BZ63") ///
 * Limpieza de la base de datos
 
 drop D-G
-rename C concepto
 
 * Tratamiento de la base de datos
 gen id = _n
@@ -142,6 +146,8 @@ format fecha %tq
 drop periodo quarter year
 order id concepto fecha
 
+save "clean_data/pib", replace
+
 * PIB Total
 
 preserve
@@ -160,6 +166,38 @@ preserve
 	
 restore
 
+
+* Comparación entre el PIB y el ISE - Serie histórica
+
+use "${dir}/clean_data/ise", replace
+keep if id == 13
+
+collapse (mean) var_ISE, by(fechaq)
+rename fechaq fecha
+
+tempfile ise
+save `ise' 
+
+use "${dir}/clean_data/pib", replace
+
+keep if id == 15
+	
+merge 1:1 fecha using `ise'
+keep if _merge == 3
+
+tsset fecha
+
+#d ;
+	tw (tsline var_PIB, lcolor(navy))
+	   (tsline var_ISE, lcolor(cranberry) yline(0)
+	   ),
+	   xtitle("Trimestre")
+	   ytitle("Variación (%)")
+	   legend(label(1 "PIB") label(2 "ISE"))
+	   name("varpib_varise", replace)  
+	   ;
+	   
+#d cr;
 
 
 
