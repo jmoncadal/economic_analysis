@@ -199,10 +199,68 @@ tsset fecha
 	   
 #d cr;
 
+* PIB por componente
 
+use "${dir}/clean_data/pib", replace
 
+encode concepto, gen(concepto_cat)
+label list concepto_cat
+drop id concepto 
+reshape wide var_PIB, i(fecha) j(concepto_cat)
 
+tsset fecha
 
+#d;
+tw (tsline var_PIB15, lcolor(navy) lpattern(dash))
+   (tsline var_PIB8, lcolor(cranberry))
+   (tsline var_PIB11, lcolor(stc3)),
+   yline(0)
+   name("pib_componentens", replace);
+#d cr;
+
+**# IPC -----------------------------------------------------------------------
+
+import excel "${dir}/raw_data/inflacion.xlsx", sheet("Sheet1") cellrange("A8:E379") firstrow clear 
+
+#d;
+rename (AñoaaaaMesmm Inflacióntotal1 Límiteinferior Metadeinflación Limitesuperior)
+	   (fecha inflacion l_inferior meta l_superior);
+#d cr;
+
+tostring fecha, replace	
+gen year = substr(fecha, 1, 4)
+gen month = substr(fecha, 5, 6)
+
+destring year, replace
+destring month, replace
+
+drop fecha
+
+gen fecha = ym(year, month)
+format fecha %tm
+
+drop year month
+order fecha
+
+tsset fecha 
+
+#d ;
+tw (tsline inflacion, lcolor(navy) xtitle("Fecha") ytitle("Inflación (%)")
+					  legend(pos(6) col(4)))
+   (tsline l_inferior, lcolor(red))
+   (tsline l_superior, lcolor(dkgreen))
+   (tsline meta, lcolor(gold)
+   name("inflacion", replace)),
+   legen(label(1 "Inflación") label(2 "Límite inferior")
+		 label(3 "Límite superior") label(4 "Meta"));
+
+#d cr;
+
+drop if missing(l_inferior)
+gen aciertos = (inflacion > l_inferior) & (inflacion < l_superior) 
+tab aciertos
+
+di (119/251)*100
 
 
 
